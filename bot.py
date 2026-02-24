@@ -1,10 +1,16 @@
 import os
-import yt_dlp
-from telegram.ext import ApplicationBuilder
+from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
+from telegram import Update
 
 TOKEN = os.getenv("BOT_TOKEN")
 
-app = ApplicationBuilder().token(TOKEN).build()
-git add .
-git commit -m "update token to env"
-git push
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("البوت يعمل بنجاح ✅")
+
+def main():
+    app = ApplicationBuilder().token(TOKEN).build()
+    app.add_handler(CommandHandler("start", start))
+    app.run_polling()
+
+if __name__ == "__main__":
+    main()
