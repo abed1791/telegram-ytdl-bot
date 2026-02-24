@@ -1,4 +1,3 @@
 python-telegram-bot
 yt-dlp
-import os
 TOKEN = os.getenv("BOT_TOKEN")
