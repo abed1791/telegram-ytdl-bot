@@ -45,7 +45,14 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.clear()
     context.user_data["url"] = url
 
-    ydl_opts = {"quiet": True}
+    ydl_opts = {
+    "quiet": True,
+    "extractor_args": {
+        "youtube": {
+            "player_client": ["android"]
+        		}
+    		}
+	}
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=False)
 
