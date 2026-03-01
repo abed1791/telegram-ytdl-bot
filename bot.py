@@ -1,7 +1,7 @@
 import os
 import math
 import yt_dlp
-import asyncio
+import threading
 from flask import Flask, send_from_directory
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
@@ -13,21 +13,20 @@ from telegram.ext import (
     filters,
 )
 
-# ================== الإعدادات ==================
+# ===== الإعدادات =====
 BOT_TOKEN = "8771343659:AAFO2am_bvULjxqi-iaPy-b_3mLGXwokwAk"
 BASE_URL = "https://telegram-ytdl-bot-1-qhnq.onrender.com"
-
 DOWNLOAD_DIR = "downloads"
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
-# ================== Flask ==================
+# ===== Flask =====
 app_web = Flask(__name__)
 
 @app_web.route("/download/<path:filename>")
 def download_file(filename):
     return send_from_directory(DOWNLOAD_DIR, filename, as_attachment=True)
 
-# ================== أدوات ==================
+# ===== أدوات =====
 def sizeof_fmt(num):
     for unit in ['B','KB','MB','GB']:
         if num < 1024.0:
@@ -35,20 +34,15 @@ def sizeof_fmt(num):
         num /= 1024.0
     return f"{num:.2f} TB"
 
-# yt-dlp options مع cookies
 def base_ydl_opts():
     return {
         "quiet": True,
         "nocheckcertificate": True,
-        "cookiefile": "cookies.txt",  # ← مهم
-        "extractor_args": {
-            "youtube": {
-                "player_client": ["android"]
-            }
-        }
+        "cookiefile": "cookies.txt",  # مهم
+        "extractor_args": {"youtube": {"player_client": ["android"]}},
     }
 
-# ================== البوت ==================
+# ===== Handlers البوت =====
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.clear()
     await update.message.reply_text("🎬 أرسل رابط يوتيوب")
@@ -106,11 +100,7 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ydl_opts.update({
             "format": "bestaudio",
             "outtmpl": os.path.join(DOWNLOAD_DIR, "audio.%(ext)s"),
-            "postprocessors": [{
-                "key": "FFmpegExtractAudio",
-                "preferredcodec": "mp3",
-                "preferredquality": "64",
-            }],
+            "postprocessors": [{"key": "FFmpegExtractAudio","preferredcodec": "mp3","preferredquality": "64"}],
             "nopart": True,
         })
     else:
@@ -134,34 +124,22 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if os.path.exists(filepath):
         link = f"{BASE_URL}/download/{output_name}"
-        await query.message.reply_text(
-            f"✅ تم الانتهاء\n🔗 رابط التحميل:\n{link}"
-        )
+        await query.message.reply_text(f"✅ تم الانتهاء\n🔗 رابط التحميل:\n{link}")
     else:
         await query.message.reply_text("❌ لم يتم إنشاء الملف")
 
     context.user_data.clear()
 
-# ================== التشغيل ==================
-async def main():
+# ===== تشغيل البوت و Flask =====
+def run_bot():
     app = ApplicationBuilder().token(BOT_TOKEN).build()
-
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     app.add_handler(CallbackQueryHandler(button))
-
-    loop = asyncio.get_running_loop()
-    loop.run_in_executor(
-        None,
-        lambda: app_web.run(
-            host="0.0.0.0",
-            port=int(os.environ.get("PORT", 10000)),
-            debug=False,
-            use_reloader=False
-        )
-    )
-
-    await app.run_polling()
+    app.run_polling()
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    # Thread لتشغيل البوت
+    threading.Thread(target=run_bot).start()
+    # Flask
+    app_web.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)), debug=False, use_reloader=False)
