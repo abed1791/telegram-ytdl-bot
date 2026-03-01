@@ -1,4 +1,4 @@
-#bot52
+#bot51
 import os
 import math
 import yt_dlp
@@ -16,7 +16,7 @@ from telegram.ext import (
 
 # ================== الإعدادات ==================
 BOT_TOKEN = "8771343659:AAFO2am_bvULjxqi-iaPy-b_3mLGXwokwAk"
-BASE_URL = "https://telegram-ytdl-bot-1-qhnq.onrender.com"
+BASE_URL = "https://telegram-ytdl-bot-1.onrender.com"
 
 DOWNLOAD_DIR = "downloads"
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
@@ -28,7 +28,7 @@ app_web = Flask(__name__)
 def download_file(filename):
     return send_from_directory(DOWNLOAD_DIR, filename, as_attachment=True)
 
-# ================== أدوات ==================
+# ================== أدوات مساعدة ==================
 def sizeof_fmt(num):
     for unit in ['B','KB','MB','GB']:
         if num < 1024.0:
@@ -36,19 +36,7 @@ def sizeof_fmt(num):
         num /= 1024.0
     return f"{num:.2f} TB"
 
-# yt-dlp options المشتركة
-def base_ydl_opts():
-    return {
-        "quiet": True,
-        "nocheckcertificate": True,
-        "extractor_args": {
-            "youtube": {
-                "player_client": ["android"]
-            }
-        }
-    }
-
-# ================== البوت ==================
+# ================== أوامر البوت ==================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.clear()
     await update.message.reply_text("🎬 أرسل رابط يوتيوب")
@@ -58,12 +46,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.clear()
     context.user_data["url"] = url
 
-    try:
-        with yt_dlp.YoutubeDL(base_ydl_opts()) as ydl:
-            info = ydl.extract_info(url, download=False)
-    except Exception:
-        await update.message.reply_text("❌ لا يمكن استخراج الفيديو (يوتيوب رفض الاتصال)")
-        return
+    ydl_opts = {"quiet": True}
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        info = ydl.extract_info(url, download=False)
 
     title = info.get("title", "")
     duration = info.get("duration", 0)
@@ -102,8 +87,7 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         output_name = "audio.mp3"
         filepath = os.path.join(DOWNLOAD_DIR, output_name)
 
-        ydl_opts = base_ydl_opts()
-        ydl_opts.update({
+        ydl_opts = {
             "format": "bestaudio",
             "outtmpl": os.path.join(DOWNLOAD_DIR, "audio.%(ext)s"),
             "postprocessors": [{
@@ -112,25 +96,22 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "preferredquality": "64",
             }],
             "nopart": True,
-        })
+            "quiet": True,
+        }
     else:
         format_id = data[1]
         output_name = "video.mp4"
         filepath = os.path.join(DOWNLOAD_DIR, output_name)
 
-        ydl_opts = base_ydl_opts()
-        ydl_opts.update({
+        ydl_opts = {
             "format": format_id,
             "outtmpl": os.path.join(DOWNLOAD_DIR, "video.%(ext)s"),
             "nopart": True,
-        })
+            "quiet": True,
+        }
 
-    try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([url])
-    except Exception:
-        await query.message.reply_text("❌ فشل التحميل (يوتيوب منع السيرفر)")
-        return
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        ydl.download([url])
 
     if os.path.exists(filepath):
         link = f"{BASE_URL}/download/{output_name}"
@@ -138,7 +119,7 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"✅ تم الانتهاء\n🔗 رابط التحميل:\n{link}"
         )
     else:
-        await query.message.reply_text("❌ لم يتم إنشاء الملف")
+        await query.message.reply_text("❌ فشل التحميل")
 
     context.user_data.clear()
 
@@ -150,6 +131,7 @@ async def main():
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     app.add_handler(CallbackQueryHandler(button))
 
+    # تشغيل Flask في Thread منفصل
     loop = asyncio.get_running_loop()
     loop.run_in_executor(
         None,
