@@ -14,7 +14,7 @@ from telegram.ext import (
     filters,
 )
 
-BOT_TOKEN = "ضع_توكنك_هنا"
+BOT_TOKEN = "8771343659:AAFO2am_bvULjxqi-iaPy-b_3mLGXwokwAk"
 BASE_URL = "https://telegram-ytdl-bot-1-qhnq.onrender.com"
 DOWNLOAD_DIR = "downloads"
 COOKIES_FILE = "cookies.txt"
@@ -146,3 +146,4 @@ if __name__ == "__main__":
     threading.Thread(target=run_bot).start()
 
     app_web.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)), debug=False, use_reloader=False)
+
