@@ -1,3 +1,4 @@
+#bot52
 import os
 import math
 import yt_dlp
@@ -163,4 +164,5 @@ async def main():
     await app.run_polling()
 
 if __name__ == "__main__":
+
     asyncio.run(main())
