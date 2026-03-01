@@ -35,11 +35,12 @@ def sizeof_fmt(num):
         num /= 1024.0
     return f"{num:.2f} TB"
 
-# yt-dlp options المشتركة
+# yt-dlp options مع cookies
 def base_ydl_opts():
     return {
         "quiet": True,
         "nocheckcertificate": True,
+        "cookiefile": "cookies.txt",  # ← مهم
         "extractor_args": {
             "youtube": {
                 "player_client": ["android"]
@@ -61,7 +62,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         with yt_dlp.YoutubeDL(base_ydl_opts()) as ydl:
             info = ydl.extract_info(url, download=False)
     except Exception:
-        await update.message.reply_text("❌ لا يمكن استخراج الفيديو (يوتيوب رفض الاتصال)")
+        await update.message.reply_text("❌ فشل استخراج الفيديو (قد تحتاج تحديث cookies)")
         return
 
     title = info.get("title", "")
@@ -128,7 +129,7 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
     except Exception:
-        await query.message.reply_text("❌ فشل التحميل (يوتيوب منع السيرفر)")
+        await query.message.reply_text("❌ فشل التحميل (تحقق من صلاحية cookies)")
         return
 
     if os.path.exists(filepath):
