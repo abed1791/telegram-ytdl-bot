@@ -9,7 +9,8 @@ from flask import Flask, send_from_directory
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, CallbackQueryHandler, ContextTypes, filters
 
-BOT_TOKEN = os.getenv("8771343659:AAFO2am_bvULjxqi-iaPy-b_3mLGXwokwAk")
+BOT_TOKEN = "8771343659:AAFO2am_bvULjxqi-iaPy-b_3mLGXwokwAk"
+BASE_URL = "https://telegram-ytdl-bot-1.onrender.com"
 DEFAULT_MAX_SIZE_MB = 49
 BASE_URL = os.getenv("https://telegram-ytdl-bot-1.onrender.com")  # https://telegram-ytdl-bot-1.onrender.com
 
@@ -116,3 +117,4 @@ if __name__ == "__main__":
     app.add_handler(CallbackQueryHandler(button))
 
     app.run_polling()
+
