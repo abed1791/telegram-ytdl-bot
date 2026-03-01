@@ -13,23 +13,38 @@ from telegram.ext import (
     filters,
 )
 
-# ================= إعدادات =================
-BOT_TOKEN = "8771343659:AAFO2am_bvULjxqi-iaPy-b_3mLGXwokwAk"
+BOT_TOKEN = "ضع_توكنك_هنا"
 BASE_URL = "https://telegram-ytdl-bot-1-qhnq.onrender.com"
 DOWNLOAD_DIR = "downloads"
+COOKIES_FILE = "cookies.txt"
+
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
-# اختياري: proxy
-YTDL_PROXY = os.getenv("YTDL_PROXY")  # اتركه فارغاً إذا لم تستخدم بروكسي
-
-# ================= Flask =================
 app_web = Flask(__name__)
+
+@app_web.route("/")
+def home():
+    return "Bot is running"
 
 @app_web.route("/download/<path:filename>")
 def download_file(filename):
     return send_from_directory(DOWNLOAD_DIR, filename, as_attachment=True)
 
-# ================= أدوات =================
+def ydl_base():
+    return {
+        "quiet": True,
+        "nocheckcertificate": True,
+        "cookiefile": COOKIES_FILE,
+        "extractor_args": {
+            "youtube": {
+                "player_client": ["android"]
+            }
+        },
+        "http_headers": {
+            "User-Agent": "Mozilla/5.0 (Linux; Android 10)"
+        }
+    }
+
 def sizeof_fmt(num):
     for unit in ['B','KB','MB','GB']:
         if num < 1024.0:
@@ -37,53 +52,40 @@ def sizeof_fmt(num):
         num /= 1024.0
     return f"{num:.2f} TB"
 
-def base_ydl_opts():
-    opts = {
-        "quiet": True,
-        "nocheckcertificate": True,
-        "cookiefile": "cookies.txt",  # مهم لتجاوز تسجيل الدخول
-        "extractor_args": {"youtube": {"player_client": ["android"]}},
-    }
-    if YTDL_PROXY:
-        opts["proxy"] = YTDL_PROXY
-    return opts
-
-# ================= Handlers البوت =================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.clear()
     await update.message.reply_text("🎬 أرسل رابط يوتيوب")
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     url = update.message.text.strip()
-    context.user_data.clear()
     context.user_data["url"] = url
 
     try:
-        with yt_dlp.YoutubeDL(base_ydl_opts()) as ydl:
+        with yt_dlp.YoutubeDL(ydl_base()) as ydl:
             info = ydl.extract_info(url, download=False)
     except Exception:
-        await update.message.reply_text("❌ فشل استخراج الفيديو (تحقق من cookies أو proxy)")
+        await update.message.reply_text("❌ فشل الاستخراج — تحقق من cookies.txt")
         return
 
     title = info.get("title", "")
     duration = info.get("duration", 0)
     formats = info.get("formats", [])
 
-    video_buttons = []
+    buttons = []
     for f in formats:
         if f.get("height") and f.get("ext") == "mp4":
             size = f.get("filesize") or 0
             label = f"{f['height']}p - {sizeof_fmt(size) if size else '??'}"
-            video_buttons.append(
+            buttons.append(
                 [InlineKeyboardButton(label, callback_data=f"video|{f['format_id']}")]
             )
 
-    keyboard = video_buttons[:6]
-    keyboard.append([InlineKeyboardButton("🎵 تحميل MP3", callback_data="audio")])
+    buttons = buttons[:6]
+    buttons.append([InlineKeyboardButton("🎵 تحميل MP3", callback_data="audio")])
 
     await update.message.reply_text(
         f"📌 {title}\n⏱ {math.floor(duration/60)} دقيقة\nاختر الجودة:",
-        reply_markup=InlineKeyboardMarkup(keyboard)
+        reply_markup=InlineKeyboardMarkup(buttons)
     )
 
 async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -92,51 +94,46 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.edit_message_text("⏳ جاري المعالجة...")
 
     url = context.user_data.get("url")
-    if not url:
-        await query.message.reply_text("❌ حدث خطأ، أعد إرسال الرابط")
-        return
-
     data = query.data.split("|")
 
     if data[0] == "audio":
-        output_name = "audio.mp3"
-        filepath = os.path.join(DOWNLOAD_DIR, output_name)
-
-        ydl_opts = base_ydl_opts()
+        ydl_opts = ydl_base()
         ydl_opts.update({
             "format": "bestaudio",
             "outtmpl": os.path.join(DOWNLOAD_DIR, "audio.%(ext)s"),
-            "postprocessors": [{"key": "FFmpegExtractAudio","preferredcodec": "mp3","preferredquality": "64"}],
+            "postprocessors": [{
+                "key": "FFmpegExtractAudio",
+                "preferredcodec": "mp3",
+                "preferredquality": "64",
+            }],
             "nopart": True,
         })
+        filename = "audio.mp3"
     else:
         format_id = data[1]
-        output_name = "video.mp4"
-        filepath = os.path.join(DOWNLOAD_DIR, output_name)
-
-        ydl_opts = base_ydl_opts()
+        ydl_opts = ydl_base()
         ydl_opts.update({
             "format": format_id,
             "outtmpl": os.path.join(DOWNLOAD_DIR, "video.%(ext)s"),
             "nopart": True,
         })
+        filename = "video.mp4"
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
     except Exception:
-        await query.message.reply_text("❌ فشل التحميل (تحقق من صلاحية cookies أو proxy)")
+        await query.message.reply_text("❌ فشل التحميل — cookies منتهية أو IP محظور")
         return
 
+    filepath = os.path.join(DOWNLOAD_DIR, filename)
+
     if os.path.exists(filepath):
-        link = f"{BASE_URL}/download/{output_name}"
-        await query.message.reply_text(f"✅ تم الانتهاء\n🔗 رابط التحميل:\n{link}")
-    else:
-        await query.message.reply_text("❌ لم يتم إنشاء الملف")
+        link = f"{BASE_URL}/download/{filename}"
+        await query.message.reply_text(f"✅ تم التحميل\n🔗 {link}")
 
     context.user_data.clear()
 
-# ================= تشغيل البوت و Flask =================
 def run_bot():
     app = ApplicationBuilder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
