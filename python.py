@@ -10,7 +10,7 @@ from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, Cal
 
 BOT_TOKEN = os.getenv("8771343659:AAFO2am_bvULjxqi-iaPy-b_3mLGXwokwAk")
 DEFAULT_MAX_SIZE_MB = 49
-BASE_URL = os.getenv("https://bot.onrender.com")  # https://bot.onrender.com
+BASE_URL = os.getenv("https://telegram-ytdl-bot-1.onrender.com")  # https://telegram-ytdl-bot-1.onrender.com
 
 DOWNLOAD_DIR = "downloads"
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
