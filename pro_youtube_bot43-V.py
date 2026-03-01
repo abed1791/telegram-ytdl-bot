@@ -1,5 +1,5 @@
+#bot43
 # 32 kbps keep temp
-
 import os
 import math
 import yt_dlp
@@ -146,4 +146,5 @@ if __name__ == "__main__":
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     app.add_handler(CallbackQueryHandler(button))
     print("🔥 Pro Bot Running...")
+
     app.run_polling()
